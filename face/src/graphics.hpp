@@ -316,6 +316,12 @@ class FaceGraphic
 {
 public:
 
+    FaceGraphic():
+        left_eye(std::make_shared<EyeGraphic>()),
+        right_eye(std::make_shared<EyeGraphic>()),
+        mouth(std::make_shared<MouthGraphic>())
+    {}
+
     FaceGraphic(int width, int height):
         width(width),
         height(height),
@@ -323,6 +329,12 @@ public:
         right_eye(std::make_shared<EyeGraphic>()),
 		mouth(std::make_shared<MouthGraphic>())
     {}
+
+    auto set_size(int width, int height) -> void
+    {
+        this->width = width;
+        this->height = height;
+    }
 
     /**
      * Draws the face graphic by first drawing each eye into their respective

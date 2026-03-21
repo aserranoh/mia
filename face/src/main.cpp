@@ -17,7 +17,7 @@
 
 
 Renderer<FaceGraphic> renderer;
-FaceGraphic face(800, 600);
+FaceGraphic face;
 std::shared_ptr<AnimationController> animation_controller = std::make_shared<AnimationController>();
 Input input{"tcp://127.0.0.1:5555"};
 
@@ -71,15 +71,68 @@ auto configure_video_driver(const std::optional<std::string>& driver) -> std::ex
 }
 
 
+auto parse_window_size(int argc, char** argv, int& window_width, int& window_height) -> std::expected<void, std::string>
+{
+    auto parse_size = [](const std::string& value, int& width, int& height) -> std::expected<void, std::string> {
+        const std::size_t separator_pos = value.find('x');
+        if (separator_pos == std::string::npos) {
+            return std::unexpected{"Invalid --window-size format: " + value + ". Use WIDTHxHEIGHT, e.g. 800x480."};
+        }
+
+        try {
+            width = std::stoi(value.substr(0, separator_pos));
+            height = std::stoi(value.substr(separator_pos + 1));
+        } catch (const std::exception&) {
+            return std::unexpected{"Invalid --window-size format: " + value + ". Use WIDTHxHEIGHT, e.g. 800x480."};
+        }
+
+        if (width <= 0 || height <= 0) {
+            return std::unexpected{"Invalid --window-size values: " + value + ". Width and height must be > 0."};
+        }
+
+        return {};
+    };
+
+    for (int i = 1; i < argc; ++i) {
+        const std::string arg = argv[i];
+        if (arg.rfind("--window-size=", 0) == 0) {
+            const std::string value = arg.substr(std::string("--window-size=").size());
+            auto parsed_result = parse_size(value, window_width, window_height);
+            if (!parsed_result) {
+                return std::unexpected{parsed_result.error()};
+            }
+            return {};
+        }
+
+        if (arg == "--window-size") {
+            if (i + 1 >= argc) {
+                return std::unexpected{"Missing value for --window-size. Use WIDTHxHEIGHT, e.g. 800x480."};
+            }
+
+            const std::string value = argv[++i];
+            auto parsed_result = parse_size(value, window_width, window_height);
+            if (!parsed_result) {
+                return std::unexpected{parsed_result.error()};
+            }
+            return {};
+        }
+    }
+
+    return {};
+}
+
+
 /**
  * Initialization.
  */
-auto init() -> std::expected<void, std::string>
+auto init(int window_width, int window_height) -> std::expected<void, std::string>
 {
-    std::expected<void, std::string> result = renderer.init();
+    std::expected<void, std::string> result = renderer.init(window_width, window_height);
     if (!result) {
         return std::unexpected{result.error()};
     }
+
+    face.set_size(renderer.width(), renderer.height());
 
     std::expected<void, std::string> eyes_shape_result = face.set_eyes_shape(
         renderer.context(),
@@ -155,6 +208,9 @@ auto destroy() -> void
 
 int main(int argc, char** argv)
 {
+    int window_width = 0;
+    int window_height = 0;
+
     auto video_driver_result = parse_video_driver(argc, argv);
     if (!video_driver_result) {
         std::cerr << video_driver_result.error() << std::endl;
@@ -167,7 +223,13 @@ int main(int argc, char** argv)
         return -1;
     }
 
-    std::expected<void, std::string> init_result = init();
+    auto window_size_result = parse_window_size(argc, argv, window_width, window_height);
+    if (!window_size_result) {
+        std::cerr << window_size_result.error() << std::endl;
+        return -1;
+    }
+
+    std::expected<void, std::string> init_result = init(window_width, window_height);
     if (!init_result) {
         std::cerr << init_result.error() << std::endl;
         return -1;
