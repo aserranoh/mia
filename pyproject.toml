@@ -1,0 +1,11 @@
+[project]
+name = "robot-maia"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "piper-tts>=1.4.1",
+    "sounddevice>=0.5.5",
+    "soundfile>=0.13.1",
+]
