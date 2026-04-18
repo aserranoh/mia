@@ -85,11 +85,6 @@ def main() -> int:
 			command=[str(face_binary)],
 			cwd=repo_root,
 		),
-		Component(
-			name="nats",
-			command=["nats-server"],
-			cwd=repo_root,
-		),
 	]
 
 	if not face_binary.exists():
