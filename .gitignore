@@ -12,4 +12,6 @@ wheels/
 # VS Code settings
 .vscode/
 
-piper/
+voices/
+files/
+node_modules/

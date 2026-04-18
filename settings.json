@@ -1,0 +1,5 @@
+{
+    "config_path": "config.json",
+    "voices_dir": "voices",
+    "files_dir": "files"
+}

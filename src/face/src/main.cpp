@@ -12,14 +12,14 @@
 
 #include "animations.hpp"
 #include "graphics.hpp"
-#include "input.hpp"
+#include "nats.hpp"
 #include "renderer.hpp"
 
 
 Renderer<FaceGraphic> renderer;
 FaceGraphic face;
 std::shared_ptr<AnimationController> animation_controller = std::make_shared<AnimationController>();
-Input input{"tcp://127.0.0.1:5555"};
+NatsConnectionManager nats_connection{"nats://127.0.0.1:4222"};
 
 
 auto parse_video_driver(int argc, char** argv) -> std::expected<std::optional<std::string>, std::string>
@@ -164,16 +164,15 @@ auto init(int window_width, int window_height) -> std::expected<void, std::strin
         std::chrono::milliseconds(3000) // Average time between blinks
     ));
 
-    // Speech amplitude input (PUB on external program, SUB here).
-    // Default endpoint can be adjusted later or made configurable.
-    auto input_result = input.init();
-    if (!input_result) {
-        return std::unexpected{input_result.error()};
-    }
-
-    input.register_handler(
-        "face/speech",
+    nats_connection.register_handler(
+        "maia.mouth",
         std::make_unique<SpeechMessageHandler>(animation_controller, face.get_mouth())
+    );
+
+    renderer.set_on_face_tapped(
+        [](int x, int y) {
+            nats_connection.face_tapped(x, y);
+        }
     );
 
     return {};
@@ -186,10 +185,7 @@ auto init(int window_width, int window_height) -> std::expected<void, std::strin
 auto main_loop() -> void
 {
     while (!renderer.window_closed()) {
-        const std::expected<void, std::string> input_result = input.read();
-        if (!input_result) {
-            std::cerr << input_result.error() << std::endl;
-        }
+        nats_connection.tick();
         animation_controller->step();
         renderer.render(face);
     }

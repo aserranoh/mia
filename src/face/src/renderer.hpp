@@ -2,6 +2,7 @@
 #pragma once
 
 #include <expected>
+#include <functional>
 #include <string>
 
 #include <SDL2/SDL.h>
@@ -15,6 +16,8 @@ template <typename T>
 class Renderer
 {
 public:
+
+    using FaceTappedCallback = std::function<void(int, int)>;
 
     // Construct with optional background color (NanoVG `NVGcolor`).
     Renderer():
@@ -111,12 +114,7 @@ public:
 
         SDL_Event event;
         while (SDL_PollEvent(&event) == 1) {
-            if (event.type == SDL_QUIT) {
-                should_close = true;
-            }
-            if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
-                should_close = true;
-            }
+            handle_event(event);
         }
 
         SDL_GL_GetDrawableSize(window, &drawable_width, &drawable_height);
@@ -172,12 +170,63 @@ public:
         return drawable_height;
     }
 
+    auto set_on_face_tapped(FaceTappedCallback callback) -> void
+    {
+        on_face_tapped = std::move(callback);
+    }
+
+private:
+
+    auto emit_face_tapped(int x, int y) -> void
+    {
+        if (on_face_tapped) {
+            on_face_tapped(x, y);
+        }
+    }
+
+    auto handle_event(const SDL_Event& event) -> void
+    {
+        if (event.type == SDL_QUIT) {
+            should_close = true;
+        }
+
+        if (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE) {
+            should_close = true;
+        }
+
+        if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+            // Ignore synthetic mouse events produced by touch to avoid duplicate logs.
+            if (event.button.which != SDL_TOUCH_MOUSEID) {
+                SDL_LogInfo(
+                    SDL_LOG_CATEGORY_APPLICATION,
+                    "Face click detected (mouse): x=%d y=%d",
+                    event.button.x,
+                    event.button.y
+                );
+                emit_face_tapped(event.button.x, event.button.y);
+            }
+        }
+
+        if (event.type == SDL_FINGERDOWN) {
+            const int tap_x = static_cast<int>(event.tfinger.x * static_cast<float>(drawable_width));
+            const int tap_y = static_cast<int>(event.tfinger.y * static_cast<float>(drawable_height));
+            SDL_LogInfo(
+                SDL_LOG_CATEGORY_APPLICATION,
+                "Face click detected (touch): x=%d y=%d",
+                tap_x,
+                tap_y
+            );
+            emit_face_tapped(tap_x, tap_y);
+        }
+    }
+
 protected:
 
     SDL_Window* window{};
     SDL_GLContext gl_context{};
     NVGcontext* vg{};
     NVGcolor background_color{};
+    FaceTappedCallback on_face_tapped{};
     bool should_close{false};
     int drawable_width{0};
     int drawable_height{0};

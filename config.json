@@ -1,0 +1,14 @@
+{
+  "whisper_model": "small",
+  "language": "ca",
+  "system_prompt": "You are a robot. Your name is Mia. You are a member of our family. Our family has the following members: Toni (dad), Dandan (mom), Loan (son), Maya (daughter), and you, Mia.",
+  "gemini_model": "gemini-2.5-flash-lite",
+  "gemini_key": "",
+  "uploaded_files": [
+    {
+      "path": "gemini-key-2",
+      "description": "This is the key for the Google Gemini service.",
+      "content_type": "application/octet-stream"
+    }
+  ]
+}
