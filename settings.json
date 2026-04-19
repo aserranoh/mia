@@ -1,5 +1,6 @@
 {
     "config_path": "config.json",
     "voices_dir": "voices",
-    "files_dir": "files"
+    "files_dir": "files",
+    "ui_dir": "src/frontend/dist"
 }

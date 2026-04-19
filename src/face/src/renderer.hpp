@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include <cstdlib>
 #include <expected>
 #include <functional>
 #include <string>
@@ -178,37 +177,6 @@ public:
 
 private:
 
-    auto should_emit_tap(int x, int y, Uint32 timestamp_ms) -> bool
-    {
-        const Uint32 timestamp = (timestamp_ms != 0U) ? timestamp_ms : SDL_GetTicks();
-
-        if (last_tap_timestamp_ms != 0U) {
-            const Uint32 elapsed_ms = timestamp - last_tap_timestamp_ms;
-            const int dx = std::abs(x - last_tap_x);
-            const int dy = std::abs(y - last_tap_y);
-            if (elapsed_ms <= tap_dedup_window_ms && dx <= tap_dedup_max_delta_px && dy <= tap_dedup_max_delta_px) {
-                return false;
-            }
-        }
-
-        last_tap_timestamp_ms = timestamp;
-        last_tap_x = x;
-        last_tap_y = y;
-        return true;
-    }
-
-    auto touch_to_pixel_x(float normalized_x) const -> int
-    {
-        const int width = (drawable_width > 0) ? drawable_width : 1;
-        return static_cast<int>(normalized_x * static_cast<float>(width));
-    }
-
-    auto touch_to_pixel_y(float normalized_y) const -> int
-    {
-        const int height = (drawable_height > 0) ? drawable_height : 1;
-        return static_cast<int>(normalized_y * static_cast<float>(height));
-    }
-
     auto emit_face_tapped(int x, int y) -> void
     {
         if (on_face_tapped) {
@@ -227,30 +195,28 @@ private:
         }
 
         if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-            if (should_emit_tap(event.button.x, event.button.y, event.button.timestamp)) {
+            // Ignore synthetic mouse events produced by touch to avoid duplicate logs.
+            if (event.button.which != SDL_TOUCH_MOUSEID) {
                 SDL_LogInfo(
                     SDL_LOG_CATEGORY_APPLICATION,
-                    "Face click detected (mouse): x=%d y=%d (which=%u)",
+                    "Face click detected (mouse): x=%d y=%d",
                     event.button.x,
-                    event.button.y,
-                    event.button.which
+                    event.button.y
                 );
                 emit_face_tapped(event.button.x, event.button.y);
             }
         }
 
         if (event.type == SDL_FINGERDOWN) {
-            const int tap_x = touch_to_pixel_x(event.tfinger.x);
-            const int tap_y = touch_to_pixel_y(event.tfinger.y);
-            if (should_emit_tap(tap_x, tap_y, event.tfinger.timestamp)) {
-                SDL_LogInfo(
-                    SDL_LOG_CATEGORY_APPLICATION,
-                    "Face click detected (touch): x=%d y=%d",
-                    tap_x,
-                    tap_y
-                );
-                emit_face_tapped(tap_x, tap_y);
-            }
+            const int tap_x = static_cast<int>(event.tfinger.x * static_cast<float>(drawable_width));
+            const int tap_y = static_cast<int>(event.tfinger.y * static_cast<float>(drawable_height));
+            SDL_LogInfo(
+                SDL_LOG_CATEGORY_APPLICATION,
+                "Face click detected (touch): x=%d y=%d",
+                tap_x,
+                tap_y
+            );
+            emit_face_tapped(tap_x, tap_y);
         }
     }
 
@@ -264,10 +230,5 @@ protected:
     bool should_close{false};
     int drawable_width{0};
     int drawable_height{0};
-    Uint32 last_tap_timestamp_ms{0};
-    int last_tap_x{-100000};
-    int last_tap_y{-100000};
-    static constexpr Uint32 tap_dedup_window_ms{250};
-    static constexpr int tap_dedup_max_delta_px{32};
 
 };

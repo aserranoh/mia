@@ -81,6 +81,11 @@ def main() -> int:
 			cwd=repo_root,
 		),
 		Component(
+			name="api",
+			command=["uv", "run", "api", "--settings", "settings.json"],
+			cwd=repo_root,
+		),
+		Component(
 			name="face",
 			command=[str(face_binary)],
 			cwd=repo_root,

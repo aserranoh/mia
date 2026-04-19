@@ -23,6 +23,7 @@ dependencies = [
 [project.scripts]
 api = "mia.api:main"
 core = "mia.core:main"
+build-app = "mia._lib.build:main"
 
 [tool.uv]
 package = true

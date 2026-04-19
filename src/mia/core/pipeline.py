@@ -356,11 +356,15 @@ class AudioPlayTask(Task[ndarray]):
         if window_size <= 0:
             raise ValueError(f"window_size too small for samplerate: {window_size}")
 
-        num_windows = len(samples) // window_size
+        num_windows = int(np.ceil(len(samples) / window_size))
         if num_windows == 0:
             return np.empty(0, dtype=np.int32), np.empty(0, dtype=np.float32)
 
-        samples = samples[:num_windows * window_size]
+        target_size = num_windows * window_size
+        if len(samples) < target_size:
+            samples = np.pad(samples, (0, target_size - len(samples)), mode="constant")
+        else:
+            samples = samples[:target_size]
         windows = samples.reshape(num_windows, window_size)
 
         rms = np.sqrt(np.mean(np.square(windows), axis=1))
@@ -414,7 +418,10 @@ class Pipeline:
         self._speech_to_text_task = SpeechToTextTask(stt_engine=self.stt_engine)
         self._llm_chat_task = LLMChatTask(llm=self.llm)
         self._text_to_speech_task = TextToSpeechTask(tts_engine=self.tts_engine)
-        self._audio_play_task = AudioPlayTask(bus=self.bus)
+        self._audio_play_task = AudioPlayTask(
+            bus=self.bus,
+            sample_rate=self.tts_engine.output_sample_rate,
+        )
 
         self._audio_capture_task.connect(self._audio_chunker_task)
         self._audio_chunker_task.connect(self._speech_to_text_task)

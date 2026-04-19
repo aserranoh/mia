@@ -4,6 +4,8 @@ import logging
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 from mia import Settings, load_settings
 
@@ -40,10 +42,32 @@ def _load_args() -> argparse.Namespace:
 
 def create_app(settings: Settings) -> FastAPI:
     """Create and configure the API application instance."""
-    app = FastAPI(title="Mia Configuration API")
+    app = FastAPI(
+        title="Mia Configuration API",
+        openapi_url="/api/openapi.json",
+        docs_url="/api/docs",
+        redoc_url="/api/redoc",
+    )
     app.state.settings = settings
-    app.include_router(configuration_router)
-    app.include_router(files_router)
+
+    # Keep all API endpoints under /api so frontend routes can be served separately.
+    app.include_router(configuration_router, prefix="/api")
+    app.include_router(files_router, prefix="/api")
+
+    if not settings.ui_dir.is_dir():
+        raise ValueError(
+            f"UI directory does not exist or is not a directory: {settings.ui_dir}",
+        )
+
+    @app.get("/", include_in_schema=False)
+    def redirect_root_to_index() -> RedirectResponse:
+        return RedirectResponse(url="/index.html")
+
+    app.mount(
+        "/",
+        StaticFiles(directory=settings.ui_dir, html=True),
+        name="frontend",
+    )
     return app
 
 

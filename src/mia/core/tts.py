@@ -12,6 +12,12 @@ from piper import PiperVoice, SynthesisConfig
 class TextToSpeechEngine(ABC):
     """Interface for text-to-speech engines."""
 
+    @property
+    @abstractmethod
+    def output_sample_rate(self) -> int:
+        """Return the sample rate of synthesized output audio."""
+        ...
+
     @abstractmethod
     def synthesize(self, text: str) -> AsyncIterator[ndarray]:
         """Synthesize speech from text, yielding audio chunks as float32 numpy arrays."""
@@ -33,6 +39,11 @@ class PiperTextToSpeechEngine(TextToSpeechEngine):
         self._voice = PiperVoice.load(self.voice_file)
         if self.speaker_id is not None:
             self._config = SynthesisConfig(speaker_id=self.speaker_id)
+
+    @property
+    def output_sample_rate(self) -> int:
+        """Return Piper voice output sample rate from model config."""
+        return int(self._voice.config.sample_rate)
 
     async def synthesize(self, text: str) -> AsyncIterator[ndarray]:
         """Wrap Piper sync synthesis into an async generator yielding float32 chunks."""

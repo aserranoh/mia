@@ -1,4 +1,34 @@
 
+# Build Application
+
+Use one command to build both deliverables:
+
+- `face` binary (`src/face/build/face`)
+- frontend static files (`src/frontend/dist`)
+
+```bash
+uv run build-app
+```
+
+If you want to force frontend dependency installation first:
+
+```bash
+uv run build-app --frontend-install-deps
+```
+
+If you want to stage artifacts for a system installation (future `systemd` deployment):
+
+```bash
+uv run build-app --mode install --install-prefix /var/lib/maia
+```
+
+This installs:
+
+- face binary to `/var/lib/maia/bin/face`
+- frontend files to `/var/lib/maia/ui`
+
+Then point runtime settings (for API/core services) to that install location, for example with `ui_dir: /var/lib/maia/ui` in your settings file.
+
 # Face
 
 ## Dependencies

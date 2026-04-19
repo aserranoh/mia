@@ -8,8 +8,9 @@ class Settings(BaseModel):
     """Application settings loaded from command-line arguments."""
     
     config_path: Path = Path("/var/lib/maia/config.json")
-    voices_dir: Path = Path("/var/lib/maia/voices")
+    voices_dir: Path = Path("/usr/share/maia/voices")
     files_dir: Path = Path("/var/lib/maia/files")
+    ui_dir: Path = Path("/usr/share/maia/ui")
 
 
 def load_settings(settings_file: Path) -> Settings:
