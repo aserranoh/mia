@@ -299,14 +299,17 @@ class AudioPlayTask(Task[ndarray]):
     window_size: float = 0.02
 
     _is_playing: bool = field(init=False, default=False)
+    _chunk_seq: int = field(init=False, default=0)
 
     async def run(self) -> None:
         """Continuously play audio arrays from the queue."""
         while True:
             audio = await self.queue.get()
             self._is_playing = True
-            await self._publish_mouth_animation(audio)
-            await asyncio.to_thread(self._play_audio, audio)
+            self._chunk_seq += 1
+            chunk_id = self._chunk_seq
+            await self._publish_mouth_animation(audio, chunk_id)
+            await asyncio.to_thread(self._play_audio, audio, chunk_id)
             self._is_playing = False
             self.queue.task_done()
 
@@ -317,17 +320,27 @@ class AudioPlayTask(Task[ndarray]):
         """Wait until all queued audio arrays have been played."""
         await self.queue.join()
 
-    def _play_audio(self, audio: ndarray) -> None:
+    def _play_audio(self, audio: ndarray, chunk_id: int) -> None:
         """Play one audio array using the configured sample rate."""
         output = np.asarray(audio, dtype=np.float32)
         if output.ndim != 1:
             output = output.reshape(-1)
         if output.size == 0:
             return
+
+        audio_duration_s = output.size / float(self.sample_rate)
+        self.log(
+            logging.INFO,
+            "Audio chunk #%s playback length: samples=%s duration=%.3fs sample_rate=%s",
+            chunk_id,
+            output.size,
+            audio_duration_s,
+            self.sample_rate,
+        )
         sounddevice.play(output, self.sample_rate)
         sounddevice.wait()
 
-    async def _publish_mouth_animation(self, audio: ndarray) -> None:
+    async def _publish_mouth_animation(self, audio: ndarray, chunk_id: int) -> None:
         """Publish a mouth animation envelope when a chunk starts playback."""
         samples = np.asarray(audio, dtype=np.float32)
         if samples.ndim != 1:
@@ -338,6 +351,18 @@ class AudioPlayTask(Task[ndarray]):
         timestamps, amplitudes = self._compute_rms_amplitudes(samples)
         if timestamps.size == 0:
             return
+
+        animation_duration_s = (float(timestamps[-1]) / 1_000_000.0) + self.window_size
+        audio_duration_s = samples.size / float(self.sample_rate)
+        self.log(
+            logging.INFO,
+            "Audio chunk #%s mouth animation length: windows=%s duration=%.3fs (audio duration=%.3fs, delta=%.3fs)",
+            chunk_id,
+            len(timestamps),
+            animation_duration_s,
+            audio_duration_s,
+            audio_duration_s - animation_duration_s,
+        )
 
         try:
             await self.bus.publish(

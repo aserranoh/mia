@@ -31,7 +31,6 @@ class Bus:
 
     async def publish(self, subject: str, data: bytes):
         """Publish a message to the given subject on NATS."""
-        print(f"Publishing to {subject}: {len(data)}...")  # Debug print
         if not self._client.is_connected:
             logger.error("Cannot publish to NATS: not connected")
             return
